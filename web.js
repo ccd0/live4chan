@@ -7,6 +7,7 @@ var ipfilter = require('ipfilter');
 var captcha = require('captcha');
 var tripcode = require('tripcode');
 var fs = require('fs');
+var exec = require('child_process').exec;
 
 /* globals */
 var securetrip_salt = "AVEPwfpR4K8PXQaKa4PjXYMGktC2XY4Qt59ZnERsEt5PzAxhyL";
@@ -110,20 +111,23 @@ function invalid_extension(filename){
     return true;
 }
 
-function add_to_chat(data,id){
+function add_to_chat(data){
+    var id = data.chat;
     if (!chat[id])
         chat[id] = [];
-    if (chat[id].length>100){
+    while (chat[id].length>100){
         if(chat[id][0].image)
             fs.unlink(chat[id][0].image);
+        if(chat[id][0].thumb)
+            fs.unlink(chat[id][0].thumb);
         delete chat[id][0];
-        chat[id] = chat[id].slice(-99);
+        chat[id] = chat[id].slice(1);
     }
     if (!data_chat[id])
         data_chat[id] = [];
-    if (data_chat[id].length>100){
+    while (data_chat[id].length>100){
         delete data_chat[id][0];
-        data_chat[id] = data_chat[id].slice(-99);
+        data_chat[id] = data_chat[id].slice(1);
     }
     if (curr_chat.length>20){
         delete curr_chat[0];
@@ -137,6 +141,9 @@ function add_to_chat(data,id){
     
     fs.writeFile('public/chats.json', JSON.stringify({chat:data_chat, count:count}) , function(){
     });
+
+    io.sockets.in(id).emit('chat', data);
+    io.sockets.in('all').emit('chat', data);
 }
 
 function session_exists(session){
@@ -247,7 +254,7 @@ app.post('/chat/:id([a-z0-9]+)', function(req, res, next) {
             console.log("DELETED");
         } else {
             console.log('image loaded to', req.files.image.path);
-            data.image = req.files.image.path;
+            data.image = req.files.image.path.replace(/\\/g, "/");
         }
 
         var ipAddr = req.headers["x-forwarded-for"];
@@ -354,6 +361,17 @@ app.post('/chat/:id([a-z0-9]+)', function(req, res, next) {
         data.count = count;
         data.date = (new Date).toString();
         data.ip = req.connection.remoteAddress;
+        data.chat = req.params.id;
+
+        if (data.image) {
+            var basename = data.image.match(/([\w\-]+)\.[\w\-]+$/);
+            data.thumb = "public/tmp/thumbs/" + basename[1] + ".jpg";
+            console.log("creating thumbnail", data.thumb);
+            var thumbCommand = 'convert public/tmp/uploads/' + basename[0] + '[0] -resize "250x100>" ' + data.thumb;
+            exec(thumbCommand, function(error, stdout, stderr) {
+                add_to_chat(data);
+            });
+        }
 
     } catch(e) {
         res.json({failure: e.message});
@@ -364,15 +382,8 @@ app.post('/chat/:id([a-z0-9]+)', function(req, res, next) {
         return;
     }
 
-    add_to_chat(data, req.params.id);
-
-    data.ip = 'hidden';
-    data.chat = req.params.id;
-
     res.json({success:"SUCCESS", id:data.count});
-    
-    io.sockets.in(req.params.id).emit('chat', data);
-    io.sockets.in('all').emit('chat', data);
+    if (!data.thumb) add_to_chat(data);
 });
 
 /* socket.io content */

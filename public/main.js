@@ -308,7 +308,7 @@ function draw_new_chat(data, fast){
 
     var refs = data.count in future_ids ? future_ids[data.count] : "";
     
-    var new_image = data.image ? "<img id='chat_img_"+data.count+"' height='100px' class='chat_img' src='/"+data.image.slice(7)+"' onClick='window.open(\"/"+data.image.slice(7)+"\")'>" : "";
+    var new_image = data.image ? "<img id='chat_img_"+data.count+"' class='chat_img' src='/"+data.thumb.slice(7)+"' data-url='/"+data.image.slice(7)+"' onClick='window.open($(this).attr(\"data-url\"))'>" : "";
 
     var body = escapeHTML(data.body).replace(/\&gt;\&gt;([0-9]+)/g,"{$1}");
     var res = body.match(/\{([0-9]+)\}/g);
@@ -345,8 +345,6 @@ function draw_new_chat(data, fast){
     if(data.image)
     {
         $("#chat_img_"+data.count).thumbPopup({
-            imgSmallFlag: "",
-            imgLargeFlag: "",
             popupCSS: {'max-height': '97%', 'max-width': '75%'}
         });
     }

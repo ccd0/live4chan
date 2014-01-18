@@ -223,14 +223,15 @@ function add_to_convo(data, id) {
     "use strict";
     console.log('new convo');
     /* store in the db */
-    if(!data.chat)
-        data.chat=id;
-    new chat_db(data).save(function(err) {
+    if(!data.chat) {
+        data.chat = id;
+    }
+    new convo_db(data).save(function(err) {
         if (err) {
             console.log(err);
             return;
         }
-        chat_db.find({chat: id})
+        convo_db.find({chat: id})
             .sort({count: -1})
             .skip(100)
             .exec(function(e, ds) {
@@ -239,7 +240,6 @@ function add_to_convo(data, id) {
                     return;
                 }
                 ds.forEach(function(d) {
-                    if (d.image) fs.unlink(d.image);
                     d.remove(function(e2) {console.log(e2);});
                 });
             });
@@ -256,8 +256,9 @@ function add_to_convo(data, id) {
 function add_to_chat(data, id) {
     "use strict";
     /* store in the db */
-    if(!data.chat)
-        data.chat=id;
+    if(!data.chat) {
+        data.chat = id;
+    }
     new chat_db(data).save(function(err) {
         if (err) {
             console.log(err);

@@ -240,6 +240,7 @@ function add_to_convo(data, id) {
                     return;
                 }
                 ds.forEach(function(d) {
+                    if (d.image) fs.unlink(d.image);
                     d.remove(function(e2) {console.log(e2);});
                 });
             });
@@ -273,7 +274,7 @@ function add_to_chat(data, id) {
                     return;
                 }
                 ds.forEach(function(d) {
-                    if (d.image) fs.unlink(d.image);
+                    if (d.image && d.convo_id != d.count) fs.unlink(d.image);
                     d.remove(function(e2) {console.log(e2);});
                 });
             });

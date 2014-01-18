@@ -86,7 +86,8 @@ var chat_schema = new Schema({
     image_filesize: Number,
     image_width: Number,
     image_height: Number,
-    trip: String
+    trip: String,
+    thumb: String
 }, {capped:{size:10000000, max:1000}});
 
 var session_schema = new Schema({
@@ -169,7 +170,7 @@ function add_to_chat(data,id){
     /* store in the db */
     if(!data.chat)
         data.chat=id;
-    new chat_db(data).save(function(err){
+    chat_db.update({count: data.count}, data, {upsert: true}, function(err){
         if (err) console.log(err);
     });
 /*
@@ -305,7 +306,7 @@ app.get('/data/:id([a-z0-9]+)', function(req, res) {
     }
     chat_db.find({chat:req.params.id})
         .sort({count:-1})
-        .select('chat name body convo count date image image_filename image_filesize image_width image_height trip')
+        .select('chat name body convo count date image image_filename image_filesize image_width image_height trip thumb')
         .limit(100)
         .exec(function(e,d){
             if(!e)
@@ -497,7 +498,19 @@ function handleChatPost(req, res, next, image)
     
     io.sockets.in(req.params.id).emit('chat', data);
     io.sockets.in('all').emit('chat', data);
-    return;
+
+    if (data.image) {
+        var thumb_width = Math.min(data.image_width, 250);
+        var thumb_height = Math.min(data.image_height, 100);
+        var thumb = "public/tmp/uploads/" + data.image.match(/([\w\-]+)\.\w+$/)[1] + ".jpg";
+        gm(data.image).thumb(thumb_width, thumb_height, thumb, function(err) {
+            var thumb_data = {count: data.count, thumb: thumb};
+            if(port==80)
+                add_to_chat(thumb_data, req.params.id);
+            io.sockets.in(req.params.id).emit('chat', thumb_data);
+            io.sockets.in('all').emit('chat', thumb_data);
+        });
+    }
 }
 
 /* socket.io content */
